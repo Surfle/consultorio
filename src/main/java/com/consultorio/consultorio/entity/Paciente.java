@@ -1,5 +1,6 @@
 package com.consultorio.consultorio.entity;
 
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

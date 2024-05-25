@@ -1,12 +1,15 @@
 //AuthenticationService.java
 package com.consultorio.consultorio.service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -14,12 +17,15 @@ import org.springframework.util.Assert;
 import com.consultorio.consultorio.config.JwtServiceGenerator;
 import com.consultorio.consultorio.dto.LoginDTO;
 import com.consultorio.consultorio.dto.UserDTO;
+import com.consultorio.consultorio.entity.Audit;
 import com.consultorio.consultorio.entity.User;
+import com.consultorio.consultorio.repository.AuditRepository;
 import com.consultorio.consultorio.repository.LoginRepository;
 
 @Service
 public class LoginService {
-	
+	@Autowired
+	private AuditRepository auditRepository;
 	@Autowired
 	private LoginRepository repository;
 	@Autowired
@@ -55,6 +61,7 @@ public class LoginService {
         userDTO.setUsername(user.getUsername());        
         userDTO.setRole(user.getRole());
         userDTO.setToken(user.getPassword());
+    	logUser("INSERT", user);
 
         repository.save(user);
 
@@ -78,6 +85,7 @@ public class LoginService {
         user.setUsername(userDetails.getUsername());
         user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
         user.setRole(userDetails.getRole());
+    	logUser("UPDATE", user);
 
         repository.save(user);
 
@@ -85,6 +93,9 @@ public class LoginService {
     }
 
     public void deleteUser(Long id) {
+    	User entity = new User();
+    	entity.setId(id);
+    	logUser("DELETE", entity);
         repository.deleteById(id);
     }
     
@@ -105,4 +116,41 @@ public class LoginService {
 		userDTO.setUsername(user.getUsername());
 		return userDTO;
 	}
+	
+	
+	
+	
+	
+	
+	
+    
+    private void logUser(String operation, User entity) {
+        Long userId = getCurrentUserId();
+            
+        
+        Audit audit = new Audit();
+        audit.setEntityName("USER");
+        audit.setEntityId(getEntityId(entity));
+        audit.setOperation(operation);
+        audit.setUserId(userId);
+        audit.setTimestamp(new Timestamp(System.currentTimeMillis()));
+        auditRepository.save(audit);
+    }
+
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((User) principal).getId();
+        } else {
+            return null;
+        }
+    }
+
+    private Long getEntityId(Object entity) {
+
+        if (entity instanceof User) {
+            return ((User) entity).getId();
+        }
+        return null;
+    }
 }
